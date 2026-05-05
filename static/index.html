@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns="http://www.w3.org/1999/html">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MedAI</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<header>
+    <h1>MedAI</h1>
+</header>
+
+<div class="main-container">
+    <div class="chat-wrapper">
+        <div class="chat-status-bar">
+            <span class="status-dot"></span>
+            Нейросеть активна | В база: 14,859 препаратов
+        </div>
+
+        <div class="messages" id="messages">
+            <div class="message bot">
+                Я медицинский ИИ-ассистент. Можешь спросить меня аналоги лекартсв или их инструкции.
+            </div>
+        </div>
+        <div class="input-area">
+            <textarea id="user-input" rows="1" placeholder="Напишите вопрос о лекарствах..."></textarea>
+            <button class="send-btn" onclick="sendMessage()" id="send-btn">Отправить</button>
+        </div>
+    </div>
+</div>
+<script src="/static/script.js"></script>
+</body>
+</html>
