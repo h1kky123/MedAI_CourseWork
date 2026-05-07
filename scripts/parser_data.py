@@ -1,7 +1,3 @@
-"""
-Парсер сайта vidal.ru - сбор полной фарм-карточки препаратов
-Собирает: активные вещества, дозировки, производителя, рег.номер, клинические данные
-"""
 import requests
 import time
 import json
@@ -9,8 +5,6 @@ import re
 from bs4 import BeautifulSoup
 from tqdm import tqdm
 from datetime import datetime
-from typing import Dict, List, Optional
-
 
 START_URL = "https://www.vidal.ru/drugs/products/o/rus-a"
 
@@ -34,11 +28,6 @@ CYRILLIC_TO_LATIN = {
     "р": "r", "с": "s", "т": "t", "у": "u", "ф": "f", "х": "h", "ц": "ts", "ч": "ch",
     "ш": "sh", "э": "eh", "ю": "yu", "я": "ya"
 }
-
-
-# ============================================================================
-# БАЗА ДАННЫХ
-# ============================================================================
 
 def get_db_connection():
     import psycopg2
@@ -115,11 +104,7 @@ def create_tables():
     conn.close()
     print("✓ Таблицы созданы/проверены")
 
-
-# ============================================================================
-# СБОР ССЫЛОК
-# ============================================================================
-
+# Сбор ссылок
 def get_total_pages(soup):
     pagination = soup.find("div", class_="pagination")
     if not pagination:
@@ -177,14 +162,11 @@ def get_all_drug_links_for_letter(base_url):
     return unique_links
 
 
-# ============================================================================
-# ПАРСИНГ
-# ============================================================================
-
+#Парсинг
 def extract_active_substances(soup):
     substances = []
 
-    # Метод 1: Секция "Активные вещества"
+    # Секция "Активные вещества"
     for heading in soup.find_all(['h2', 'h3']):
         heading_text = heading.get_text(' ', strip=True)
         if 'активн' in heading_text.lower() or 'действующ' in heading_text.lower():
@@ -204,7 +186,7 @@ def extract_active_substances(soup):
             if substances:
                 return substances
 
-    # Метод 2: Секция "Состав" с таблицей
+    # Секция "Состав" с таблицей
     for heading in soup.find_all(['h2', 'h3']):
         if 'состав' in heading.get_text(' ', strip=True).lower():
             comp_div = heading.find_next_sibling('div', class_='composition')
@@ -217,7 +199,6 @@ def extract_active_substances(soup):
             if substances:
                 return substances
 
-    # Метод 3: Паттерн "русское (english) ... INN/Rec" по всей странице
     all_text = soup.get_text()
     for match in re.finditer(r'([а-яА-ЯёЁ\-]{3,})\s*\(([a-zA-Z\s\-]{3,})\)', all_text):
         ru_name = match.group(1).strip()
@@ -239,7 +220,6 @@ def extract_active_substances(soup):
                 unique.append(s)
         return unique
 
-    # Метод 4: Из H1
     h1 = soup.find('h1')
     if h1:
         title = h1.get_text(' ', strip=True)
@@ -257,7 +237,7 @@ def extract_active_substances(soup):
 def extract_dosages(soup):
     dosages = []
 
-    # Метод 1: "Лекарственные формы" с паттерном X мг+Y мг
+    # "Лекарственные формы" с паттерном X мг+Y мг
     h2_forms = soup.find('h2', string=re.compile(r'лекарственн.*форм', re.I))
     if h2_forms:
         forms_div = h2_forms.find_next_sibling('div')
@@ -266,7 +246,7 @@ def extract_dosages(soup):
             for dosage in re.findall(r'(\d+\s*мг\+\d+\s*мг)', text):
                 dosages.append({'dosage': dosage.strip(), 'package_size': ''})
 
-    # Метод 2: "Лекарственная форма" с таблицей products-table
+    # "Лекарственная форма" с таблицей products-table
     if not dosages:
         h2_form = soup.find('h2', string=re.compile(r'лекарственн.*форма[^ы]', re.I))
         if h2_form:
@@ -282,7 +262,7 @@ def extract_dosages(soup):
                     if pkg_match and dosages:
                         dosages[0]['package_size'] = pkg_match.group(1) + ' шт'
 
-    # Метод 3: Meta description
+    # Meta description
     if not dosages:
         meta = soup.find('meta', attrs={'name': 'description'})
         if meta:
@@ -379,11 +359,7 @@ def parse_drug_page(url):
         print(f"\n  Ошибка {url}: {e}")
         return None
 
-
-# ============================================================================
-# ДЕДУПЛИКАЦИЯ
-# ============================================================================
-
+# Дедупликация
 def normalize_drug_name(name):
     name = re.sub(r'\s*инструкция по применению\s*', '', name, flags=re.IGNORECASE)
     name = re.sub(r'\s*\(описание\)\s*', '', name, flags=re.IGNORECASE)
@@ -392,7 +368,6 @@ def normalize_drug_name(name):
     if match:
         return re.sub(r'\b[а-яё]{1,2}\b', '', match.group(1).strip().lower()).strip()
     return name.strip().lower()
-
 
 def deduplicate_drugs(dataset):
     grouped = {}
@@ -446,18 +421,12 @@ def deduplicate_drugs(dataset):
     print(f"  Дедупликация: {len(dataset)} → {len(deduplicated)} (удалено {removed})")
     return deduplicated
 
-
-# ============================================================================
-# СОХРАНЕНИЕ
-# ============================================================================
-
 def save_to_json(data_list):
     filename = f"vidal_dataset_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
     with open(filename, "w", encoding="utf-8") as f:
         json.dump(data_list, f, ensure_ascii=False, indent=2)
-    print(f"✓ Сохранено в JSON: {filename}")
+    print(f"Сохранено в JSON: {filename}")
     return filename
-
 
 def save_to_db(data_list):
     if not data_list:
@@ -556,18 +525,10 @@ def save_to_db(data_list):
     conn.commit()
     cur.close()
     conn.close()
-    print(f"✓ В БД сохранено: {drugs_saved} препаратов, {substances_saved} веществ")
+    print(f"В БД сохранено: {drugs_saved} препаратов, {substances_saved} веществ")
 
-
-# ============================================================================
-# ГЛАВНАЯ ФУНКЦИЯ
-# ============================================================================
 
 def main():
-    print("="*60)
-    print("ПАРСИНГ VIDAL.RU - ПОЛНАЯ ФАРМ-КАРТОЧКА")
-    print("="*60)
-
     # 1. Создаем таблицы
     print("\n1. Создание/проверка таблиц БД...")
     create_tables()
@@ -584,13 +545,12 @@ def main():
             drug_links.extend(links)
             time.sleep(1)
         except Exception as e:
-            print(f"❌ Ошибка: {e}")
+            print(f"Ошибка: {e}")
             continue
 
     # Удаление дубликатов ссылок
     drug_links = list(dict.fromkeys(drug_links))
-    print(f"\n{'='*60}")
-    print(f"Уникальных ссылок: {len(drug_links)}")
+    print(f"\nУникальных ссылок: {len(drug_links)}")
 
     # 3. Парсинг препаратов
     print(f"\n3. Парсинг препаратов...")
@@ -602,8 +562,7 @@ def main():
         if parsed:
             dataset.append(parsed)
 
-    print(f"\n{'='*60}")
-    print(f"Собрано препаратов: {len(dataset)}")
+    print(f"\nСобрано препаратов: {len(dataset)}")
 
     # 4. Дедупликация
     dataset = deduplicate_drugs(dataset)
@@ -612,11 +571,6 @@ def main():
     print(f"\n4. Сохранение данных...")
     save_to_json(dataset)
     save_to_db(dataset)
-
-    print(f"\n{'='*60}")
-    print("✓ ПАРСИНГ ЗАВЕРШЁН!")
-    print(f"{'='*60}")
-
 
 if __name__ == "__main__":
     main()

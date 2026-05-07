@@ -1,132 +1,162 @@
-# 💊 RAG-система для лекарственных препаратов
+# MedAI — система для лекарственных препаратов
 
-REST API для поиска, анализа и генерации ответов о лекарственных препаратах на основе данных vidal.ru
+Веб-приложение для поиска информации о лекарственных препаратах, поиска аналогов и ответов на медицинские вопросы. Система построена на основе нейросетей и базы данных из 14 859 препаратов.
+## 🧠 Архитектура
+
+Система состоит из трёх нейросетевых компонентов:
+
+- **DrugQuestionClassifier** — собственная нейросеть на PyTorch для классификации намерений пользователя (симптом / информация о препарате / поиск аналогов)
+- **Qwen2.5-1.5B-Instruct + LoRA** — дообученная языковая модель для генерации ответов
+- **paraphrase-multilingual-MiniLM-L12-v2** — модель эмбеддингов для семантического поиска
 
 ## 🛠 Технологии
 
-- **PostgreSQL** — база данных с полнотекстовым и векторным поиском
-- **sentence-transformers** (paraphrase-multilingual-MiniLM-L12-v2) — эмбеддинги
-- **FastAPI** — REST API с автодокументацией
-- **Qwen2.5-1.5B-Instruct** — генерация ответов (подключается позже)
+- **PostgreSQL + pgvector** — база данных с полнотекстовым и векторным поиском
+- **FastAPI** — REST API бэкенд
+- **PyTorch** — обучение и инференс нейросетей
+- **PEFT / LoRA** — дообучение языковой модели
+- **sentence-transformers** — векторные эмбеддинги
 
 ## 📁 Структура проекта
 
 ```
 CourseWork/
-├── api.py                    # FastAPI приложение
-├── parser_enhanced.py        # Парсер vidal.ru
-├── vector_store_v2.py        # Работа с PostgreSQL
-├── drug_analogs_v2.py        # Поиск аналогов
-├── data_cleaner.py           # Очистка данных
-├── load_dataset_to_db.py     # Загрузка JSON в БД
-├── generate_embeddings.py    # Генерация эмбеддингов
-├── requirements.txt          # Зависимости
-├── API_GUIDE.md             # Документация API
-├── database_schema.md       # Схема БД
-└── README.md                # Этот файл
+├── core/                        # Основные модули приложения
+│   ├── api.py                   # FastAPI приложение
+│   ├── vector_store.py          # Работа с PostgreSQL и векторный поиск
+│   ├── drug_analogs.py          # Поиск аналогов препаратов
+│   └── intent_predictor.py      # Классификатор намерений
+│
+├── ml/                          # Обучение моделей
+│   ├── train_classifier.py      # Обучение классификатора намерений
+│   ├── train_lora_qwen.py       # Дообучение Qwen + LoRA
+│   ├── generate_embeddings.py   # Генерация векторных эмбеддингов
+│   ├── convert_embeddings.py    # Конвертация эмбеддингов
+│   └── prepare_finetune_data.py # Подготовка датасета для файнтюна
+│
+├── data/                        # Датасеты
+│   ├── dataset_train.json
+│   ├── dataset_val.json
+│   └── dataset_test.json
+│
+├── scripts/                     # Вспомогательные скрипты
+│   ├── parser_data.py           # Парсер vidal.ru
+│   ├── data_cleaner.py          # Очистка данных
+│   ├── generate_dataset.py      # Генерация датасета
+│   └── load_dataset_to_db.py    # Загрузка данных в БД
+│
+├── models/                      # Модели (не включены в репозиторий)
+│   ├── qwen_medical_lora/       # LoRA адаптеры
+│   └── drug_intent_classifier.pth
+│
+├── static/                      # Фронтенд
+│   ├── index.html
+│   ├── script.js
+│   └── style.css
+│
+├── .gitignore
+├── requirements.txt
+└── README.md
 ```
 
-## 🚀 Быстрый старт
+## 🚀 Установка и запуск
 
 ### 1. Установка зависимостей
 
 ```bash
-.venv\Scripts\pip.exe install -r requirements.txt
+pip install -r requirements.txt
 ```
 
-### 2. Запуск API
+### 2. Настройка базы данных
+
+Убедитесь что PostgreSQL запущен и настроен. Параметры подключения в `core/vector_store.py`:
+
+```python
+DB_CONFIG = {
+    "dbname": "medicines_db",
+    "user": "postgres",
+    "password": "your_password",
+    "host": "localhost",
+    "port": "5433"
+}
+```
+
+### 3. Запуск приложения
 
 ```bash
-.venv\Scripts\python.exe api.py
+python -m core.api
 ```
 
-Сервер: http://localhost:8000  
-Документация: http://localhost:8000/docs
+Интерфейс: http://localhost:8000  
+Документация API: http://localhost:8000/docs
 
-## 📡 API Эндпоинты
+## 📡 API
 
 | Метод | Путь | Описание |
 |-------|------|----------|
-| GET | `/api/search?q=...` | Поиск препаратов |
-| GET | `/api/drugs/{id}` | Информация о препарате |
-| GET | `/api/drugs/{id}/analogs` | Поиск аналогов |
+| GET | `/` | Веб-интерфейс |
 | POST | `/api/chat` | RAG чат |
-| GET | `/api/stats` | Статистика |
 
-### Примеры
+### Пример запроса
 
 ```python
 import requests
 
-BASE = "http://localhost:8000"
-
-# Поиск
-r = requests.get(f"{BASE}/api/search", params={"q": "парацетамол", "top_k": 3})
-
-# Информация
-r = requests.get(f"{BASE}/api/drugs/123")
-
-# Аналоги
-r = requests.get(f"{BASE}/api/drugs/123/analogs", params={"analog_type": "structural"})
-
-# Чат
-r = requests.post(f"{BASE}/api/chat", json={"query": "Что при головной боли?", "top_k": 5})
+r = requests.post("http://localhost:8000/api/chat", json={
+    "query": "Что принимать при головной боли?",
+    "top_k": 5
+})
+print(r.json())
 ```
 
-Полная документация: [API_GUIDE.md](API_GUIDE.md)
+### Типы ответов
+
+| Тип | Описание |
+|-----|----------|
+| `drug_info` | Информация о конкретном препарате |
+| `analogs` | Список аналогов с комментарием ИИ |
+| `symptom` | Подбор препаратов по симптому |
+| `selection` | Уточнение при неоднозначном запросе |
 
 ## 🗃 База данных
 
-### Схема
-
 ```
-drugs ─────┬── drug_content (описание, показания, эмбеддинги)
-           ├── drug_forms (формы выпуска)
-           └── drug_substances ── active_substances (MNN)
+drugs ─────┬── drug_content     (описание, показания, эмбеддинги)
+           ├── drug_forms        (формы выпуска)
+           └── drug_substances ──active_substances (активные вещества)
 ```
-
-### Статистика
 
 | Таблица | Записей |
 |---------|---------|
-| drugs | 14,859 |
-| active_substances | 1,597 |
-| drug_substances | 15,470 |
-| drug_forms | 13,345 |
-| drug_content | 14,859 (с эмбеддингами) |
+| drugs | 14 859 |
+| active_substances | 1 597 |
+| drug_substances | 15 470 |
+| drug_content | 14 859 |
 
-## 📊 Повторный парсинг
+## ⚙️ Обучение моделей
 
 ```bash
-.venv\Scripts\python.exe parser_enhanced.py
+# Генерация датасета
+python scripts/generate_dataset.py
+
+# Обучение классификатора намерений
+python ml/train_classifier.py
+
+# Дообучение Qwen + LoRA
+python ml/train_lora_qwen.py
+
+# Генерация эмбеддингов для векторного поиска
+python ml/generate_embeddings.py
 ```
 
-Парсер собирает полную фарм-карточку:
-- Активные вещества (MNN)
-- Дозировки
-- Производитель, рег. номер
-- Описание, показания, противопоказания
-- Побочные эффекты, взаимодействия
+## 📊 Повторный сбор данных
 
-## ⚙️ Настройка БД
-
-```sql
--- Подключение
-psql -U postgres -h localhost -p 5433 -d medicines_db
-
--- Статистика
-SELECT COUNT(*) FROM drugs;
-SELECT COUNT(*) FROM active_substances;
-SELECT COUNT(*) FROM drug_content WHERE embedding IS NOT NULL;
+```bash
+python scripts/parser_data.py   
+python scripts/data_cleaner.py 
+python scripts/load_dataset_to_db.py
 ```
-
-## 🎯 Следующие шаги
-
-- [ ] Подключить Qwen2.5 к `/api/chat`
-- [ ] Добавить кэширование ответов
-- [ ] Создать веб-интерфейс
 
 ---
 
-**Дата:** Апрель 2026  
-**Версия:** 2.0 (FastAPI)
+**Версия:** 5.0 | **Дата:** Май 2026

@@ -146,7 +146,6 @@ h1 {
 
 .bot-body { font-size: 0.95rem; }
 
-/* ── Drug Info Sections ──────────────────────────────────────── */
 .drug-title {
     font-size: 1.05rem;
     font-weight: 700;
@@ -187,7 +186,6 @@ h1 {
     color: #d0d0d0;
 }
 
-/* Цветовые темы секций */
 .section-green  { border-left-color: #00c853; background-color: rgba(0,200,83,0.06); }
 .section-green  .drug-section-label { color: #69f0ae; }
 
@@ -219,7 +217,7 @@ h1 {
     margin: 0.5rem 0;
 }
 
-/* ── Analogs ─────────────────────────────────────────────────── */
+
 .analog-group-header {
     font-size: 0.8rem;
     font-weight: 700;
@@ -248,7 +246,7 @@ h1 {
 .analog-item:hover { border-color: var(--accent-color); }
 .analog-text { font-size: 0.92rem; color: #ccc; margin-bottom: 4px; }
 
-/* ── Selection ───────────────────────────────────────────────── */
+
 .selection-intro {
     font-size: 0.93rem;
     color: #ccc;
@@ -297,7 +295,6 @@ h1 {
     margin-top: 0.3rem;
 }
 
-/* ── Symptom ─────────────────────────────────────────────────── */
 .symptom-item {
     padding: 0.5rem 0.75rem;
     background-color: #252525;
@@ -307,7 +304,6 @@ h1 {
     font-size: 0.92rem;
 }
 
-/* ── Sources ─────────────────────────────────────────────────── */
 .sources-container {
     margin-top: 1rem;
     padding-top: 0.8rem;
@@ -343,7 +339,7 @@ h1 {
     color: white;
 }
 
-/* ── Input ───────────────────────────────────────────────────── */
+
 .input-area {
     padding: 1.5rem;
     background-color: #252525;
@@ -391,7 +387,6 @@ textarea::placeholder { color: #666; }
 .send-btn:active { transform: scale(0.98); }
 .send-btn:disabled { background-color: #444; cursor: not-allowed; color: #888; }
 
-/* ── Typing ──────────────────────────────────────────────────── */
 .typing-indicator { display: flex; gap: 5px; padding: 5px 0; }
 
 .typing-dot {
@@ -409,7 +404,33 @@ textarea::placeholder { color: #666; }
     40%           { transform: scale(1); }
 }
 
-/* ── Inline markdown ─────────────────────────────────────────── */
+
 .bot-body strong { color: #e8e8e8; font-weight: 600; }
 .bot-body em     { color: #b0b0b0; font-style: italic; }
 .bot-text        { line-height: 1.7; }
+
+.drug-source {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px dashed #3a3a3a;
+}
+
+.drug-source-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    background-color: rgba(124, 77, 255, 0.1);
+    border: 1px solid rgba(124, 77, 255, 0.3);
+    border-radius: 8px;
+    color: #b388ff;
+    text-decoration: none;
+    font-size: 0.88rem;
+    transition: all 0.2s;
+}
+
+.drug-source-link:hover {
+    background-color: rgba(124, 77, 255, 0.2);
+    border-color: var(--accent-color);
+    color: white;
+}

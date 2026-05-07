@@ -3,12 +3,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const userInput = document.getElementById('user-input');
     const sendBtn = document.getElementById('send-btn');
 
-    // ── Markdown-парсер
     function parseMarkdown(text) {
         return text
             // Горизонтальная линия
             .replace(/^---$/gm, '<hr class="md-hr">')
-            // Заголовки **Текст:** → секция-заголовок
+            // Заголовки **Текст:** секция-заголовок
             .replace(/\*\*([^*]+):\*\*/g, '<span class="md-label">$1</span>')
             // Жирный **текст**
             .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
@@ -20,7 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
             .replace(/\n/g, '<br>');
     }
 
-    // ── Рендер секций препарата ───────────────────────────────────
+    //Рендер секций препарата
     function renderDrugInfo(answer) {
         // Разбиваем по секциям **Название:** текст
         const sectionRegex = /\*\*([^*]+):\*\*\s*([\s\S]*?)(?=\n\*\*|\n---|\n={3}|$)/g;
@@ -28,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let match;
         let lastIndex = 0;
 
-        // Заголовок (первая строка до первой секции)
+        // Заголовок
         const firstSectionStart = answer.search(/\*\*[^*]+:\*\*/);
         if (firstSectionStart > 0) {
             const title = answer.slice(0, firstSectionStart).trim();
@@ -40,11 +39,11 @@ document.addEventListener('DOMContentLoaded', () => {
             lastIndex = sectionRegex.lastIndex;
         }
 
-        // Остаток после последней секции (например "Другие формы")
+        // Остаток после последней секции
         const remainder = answer.slice(lastIndex).trim();
         if (remainder) sections.push({ type: 'remainder', text: remainder });
 
-        if (sections.length <= 1) return null; // Не похоже на структурированный ответ
+        if (sections.length <= 1) return null;
 
         const sectionColors = {
             'Показания': 'section-green',
@@ -53,13 +52,24 @@ document.addEventListener('DOMContentLoaded', () => {
             'Применение': 'section-purple',
             'Побочные эффекты': 'section-orange',
         };
-5
+
         let html = '';
         sections.forEach(s => {
             if (s.type === 'title') {
                 html += `<div class="drug-title">${parseMarkdown(s.text)}</div>`;
             } else if (s.type === 'section') {
+
                 const colorClass = sectionColors[s.label] || '';
+
+                if (s.label.trim().toLowerCase() === 'источник') {
+                    html += `<div class="drug-source">
+                                <a href="${s.content.trim()}" target="_blank" class="drug-source-link">
+                                    Открыть страницу препарата
+                                </a>
+                             </div>`;
+                    return;
+                }
+
                 html += `
                 <div class="drug-section ${colorClass}">
                     <div class="drug-section-header">
@@ -84,7 +94,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return html;
     }
 
-    // ── Рендер списка аналогов ────────────────────────────────────
+    //Рендер списка аналогов
     function renderAnalogs(answer) {
         if (!answer.includes('аналог') && !answer.includes('Аналог')) return null;
 
@@ -119,7 +129,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return html || null;
     }
 
-    // ── Рендер выбора препарата ───────────────────────────────────
+    //Рендер выбора препарата
     function renderSelection(answer, sources) {
         const lines = answer.split('\n');
         const intro = lines[0];
@@ -128,7 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
         sources.forEach(source => {
             const displayName = source.trade_name;
             html += `<button class="selection-btn" onclick="window.sendMessage('Инструкция для ${displayName}')">
-                        <span class="selection-pill">💊</span>
+                        <span class="selection-pill"></span>
                         <span>${displayName}</span>
                      </button>`;
         });
@@ -137,7 +147,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return html;
     }
 
-    // ── Рендер симптом/общий ─────────────────────────────────────
+    //Рендер симптом/общий
     function renderSymptom(answer) {
         const lines = answer.split('\n');
         let html = '';
@@ -153,7 +163,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return html;
     }
 
-    // ── Главная функция рендера бота ─────────────────────────────
+    //Главная функция рендера бота
     window.addBotMessage = function(data) {
         const div = document.createElement('div');
         div.className = 'message bot';
@@ -186,14 +196,14 @@ document.addEventListener('DOMContentLoaded', () => {
             bodyHtml = renderSymptom(data.answer);
         }
 
-        // Fallback — простой parseMarkdown
+        // Fallback
         if (!bodyHtml) {
             bodyHtml = `<div class="bot-text">${parseMarkdown(data.answer)}</div>`;
         }
 
         html += `<div class="bot-body">${bodyHtml}</div>`;
 
-        // Источники только для symptom/general (для drug_info уже в секциях)
+        // Источники только для symptom/general
         if (data.sources && data.sources.length > 0 && ['symptom', 'general'].includes(data.type)) {
             html += `<div class="sources-container">
                         <div class="sources-title">Найдено в базе:</div>
@@ -213,7 +223,7 @@ document.addEventListener('DOMContentLoaded', () => {
         scrollToBottom();
     };
 
-    // ── Отправка сообщения ────────────────────────────────────────
+    //Отправка сообщения
     window.sendMessage = async function(overrideText) {
         const text = overrideText || userInput.value.trim();
         if (!text) return;

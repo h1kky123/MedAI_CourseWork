@@ -1,8 +1,3 @@
-"""
-Нейросеть для классификации вопросов о лекарствах
-Архитектура: Sentence Transformers + Linear Classifier
-Классы: symptom, drug_info, analogs
-"""
 import sys
 import io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
@@ -17,10 +12,6 @@ from tqdm import tqdm
 import numpy as np
 from pathlib import Path
 
-# ============================================================
-# КОНФИГУРАЦИЯ
-# ============================================================
-
 MODEL_NAME = "paraphrase-multilingual-MiniLM-L12-v2"
 EMBEDDING_DIM = 384
 NUM_CLASSES = 3
@@ -33,10 +24,6 @@ LABEL_TO_INTENT = {"symptom": 0, "drug_info": 1, "analogs": 2}
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Устройство: {DEVICE}")
-
-# ============================================================
-# ДАТАСЕТ
-# ============================================================
 
 class DrugQuestionDataset(Dataset):
     def __init__(self, texts, labels, model_name=MODEL_NAME):
@@ -59,19 +46,8 @@ class DrugQuestionDataset(Dataset):
             'label': torch.LongTensor([label])[0]
         }
 
-
-# ============================================================
-# НЕЙРОСЕТЬ
-# ============================================================
-
 class DrugQuestionClassifier(nn.Module):
-    """
-    Нейросеть для классификации вопросов:
-    - Input: 384-dim эмбеддинг вопроса
-    - Hidden: 128 нейронов + ReLU + Dropout
-    - Output: 3 класса (symptom, drug_info, analogs)
-    """
-    
+
     def __init__(self, input_dim=EMBEDDING_DIM, hidden_dim=128, num_classes=NUM_CLASSES):
         super(DrugQuestionClassifier, self).__init__()
         
@@ -88,17 +64,12 @@ class DrugQuestionClassifier(nn.Module):
     def forward(self, x):
         return self.network(x)
 
-
-# ============================================================
-# ЗАГРУЗКА ДАННЫХ
-# ============================================================
-
 def load_dataset():
     print("\nЗагрузка датасетов...")
     
-    train_path = Path("dataset_train.json")
-    val_path = Path("dataset_val.json")
-    test_path = Path("dataset_test.json")
+    train_path = Path("../data/dataset_train.json")
+    val_path = Path("../data/dataset_val.json")
+    test_path = Path("../data/dataset_test.json")
     
     with open(train_path, 'r', encoding='utf-8') as f:
         train_data = json.load(f)
@@ -126,14 +97,8 @@ def load_dataset():
     return train_texts, train_labels, val_texts, val_labels, test_texts, test_labels
 
 
-# ============================================================
-# ОБУЧЕНИЕ
-# ============================================================
-
 def train_model():
-    print("="*60)
     print("ОБУЧЕНИЕ НЕЙРОСЕТИ ДЛЯ КЛАССИФИКАЦИИ ВОПРОСОВ")
-    print("="*60)
     
     # Загрузка данных
     train_texts, train_labels, val_texts, val_labels, test_texts, test_labels = load_dataset()
@@ -180,10 +145,6 @@ def train_model():
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=2, factor=0.5)
     
     # Обучение
-    print(f"\n{'='*60}")
-    print(f"НАЧАЛО ОБУЧЕНИЯ ({EPOCHS} эпох)")
-    print(f"{'='*60}")
-    
     best_val_acc = 0
     patience_counter = 0
     best_model_state = None
@@ -248,7 +209,7 @@ def train_model():
             best_val_acc = val_acc
             best_model_state = model.state_dict().copy()
             patience_counter = 0
-            print(f"  ✓ Лучшая модель сохранена!")
+            print(f"Лучшая модель сохранена!")
         else:
             patience_counter += 1
         
@@ -261,13 +222,8 @@ def train_model():
     if best_model_state:
         model.load_state_dict(best_model_state)
         print(f"\n  Загружена лучшая модель (Val Acc: {best_val_acc:.4f})")
-    
-    # ============================================================
-    # ТЕСТИРОВАНИЕ
-    # ============================================================
-    print(f"\n{'='*60}")
-    print("ТЕСТИРОВАНИЕ")
-    print(f"{'='*60}")
+
+    print("Тестирование")
     
     model.eval()
     all_preds = []
@@ -292,13 +248,6 @@ def train_model():
     report = classification_report(all_labels, all_preds, target_names=target_names)
     print(report)
     
-    # ============================================================
-    # СОХРАНЕНИЕ
-    # ============================================================
-    print(f"\n{'='*60}")
-    print("СОХРАНЕНИЕ МОДЕЛИ")
-    print(f"{'='*60}")
-    
     # Сохраняем модель
     torch.save({
         'model_state_dict': model.state_dict(),
@@ -308,25 +257,16 @@ def train_model():
             'num_classes': NUM_CLASSES
         },
         'accuracy': test_acc
-    }, 'drug_intent_classifier.pth')
+    }, '../models/drug_intent_classifier.pth')
     
-    print(f"✓ Модель сохранена: drug_intent_classifier.pth")
-    print(f"✓ Точность: {test_acc:.4f}")
+    print(f"Модель сохранена: drug_intent_classifier.pth")
+    print(f"Точность: {test_acc:.4f}")
     
     return model, test_acc
 
-
-# ============================================================
-# ЗАПУСК
-# ============================================================
-
 if __name__ == "__main__":
     model, acc = train_model()
-    
-    print(f"\n{'='*60}")
-    print("ОБУЧЕНИЕ ЗАВЕРШЕНО!")
-    print(f"{'='*60}")
+    print("Обучение завершено!")
     print(f"\nФайлы:")
     print(f"  - drug_intent_classifier.pth (модель)")
     print(f"  - dataset_train.json, dataset_val.json, dataset_test.json (данные)")
-    print(f"\nСледующий шаг: интеграция в API")

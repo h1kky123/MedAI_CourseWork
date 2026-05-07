@@ -1,6 +1,3 @@
-"""
-Загрузка нового датасета в БД с полной очисткой старых данных
-"""
 import json
 import psycopg2
 from tqdm import tqdm
@@ -13,41 +10,29 @@ DB_CONFIG = {
     "port": "5433"
 }
 
-JSON_FILE = "vidal_dataset_20260411_013745.json"
+JSON_FILE = "../data/vidal_dataset_20260411_013745.json"
 
 def main():
-    print("="*60)
-    print("ЗАГРУЗКА НОВОГО ДАТАСЕТА В БД")
-    print("="*60)
-    
-    # 1. Очистка БД
-    print("\n1. Очистка старых данных...")
     conn = psycopg2.connect(**DB_CONFIG)
     cur = conn.cursor()
     
+    # Очистка старых данных
     cur.execute("DELETE FROM drug_content;")
     cur.execute("DELETE FROM drug_substances;")
     cur.execute("DELETE FROM drug_forms;")
     cur.execute("DELETE FROM drugs;")
     cur.execute("DELETE FROM active_substances;")
-    # Сброс序列
     cur.execute("ALTER SEQUENCE drugs_id_seq RESTART WITH 1;")
     cur.execute("ALTER SEQUENCE active_substances_id_seq RESTART WITH 1;")
     cur.execute("ALTER SEQUENCE drug_forms_id_seq RESTART WITH 1;")
-    
     conn.commit()
-    print("  ✓ БД очищена")
     
-    # 2. Загрузка JSON
-    print(f"\n2. Загрузка {JSON_FILE}...")
+    # Загрузка JSON
     with open(JSON_FILE, 'r', encoding='utf-8') as f:
         dataset = json.load(f)
-    print(f"  ✓ Загружено {len(dataset)} препаратов")
     
-    # 3. Сохранение в БД
-    print("\n3. Сохранение в БД...")
+    # Сохранение в БД
     drugs_saved = 0
-    substances_saved = 0
     
     for drug in tqdm(dataset, desc="Сохранение"):
         try:
@@ -76,7 +61,6 @@ def main():
                 """, (substance.get('name_ru', ''), substance.get('name_en', '')))
                 
                 substance_id = cur.fetchone()[0]
-                substances_saved += 1
                 
                 cur.execute("""
                     INSERT INTO drug_substances (drug_id, substance_id, dosage)
@@ -116,18 +100,16 @@ def main():
                 drug.get('storage_conditions', '')
             ))
             
-            # Коммит каждые 500 записей
             if drugs_saved % 500 == 0:
                 conn.commit()
         
-        except Exception as e:
+        except Exception:
             conn.rollback()
             continue
     
     conn.commit()
     
-    # Обновление search_vector
-    print("\n4. Обновление полнотекстового индекса...")
+    # Обновление полнотекстового индекса
     cur.execute("""
         UPDATE drug_content
         SET search_vector = 
@@ -137,47 +119,9 @@ def main():
             setweight(to_tsvector('russian', coalesce(side_effects, '')), 'D');
     """)
     conn.commit()
-    print("  ✓ Индекс обновлён")
-    
-    # 5. Статистика
-    print("\n" + "="*60)
-    print("РЕЗУЛЬТАТ:")
-    print("="*60)
-    
-    cur.execute("SELECT COUNT(*) FROM drugs;")
-    print(f"  Препаратов: {cur.fetchone()[0]}")
-    
-    cur.execute("SELECT COUNT(*) FROM active_substances;")
-    print(f"  Активных веществ: {cur.fetchone()[0]}")
-    
-    cur.execute("SELECT COUNT(*) FROM drug_substances;")
-    print(f"  Связей препарат-вещество: {cur.fetchone()[0]}")
-    
-    cur.execute("SELECT COUNT(*) FROM drug_forms;")
-    print(f"  Форм выпуска: {cur.fetchone()[0]}")
-    
-    cur.execute("SELECT COUNT(*) FROM drug_content;")
-    print(f"  Записей контента: {cur.fetchone()[0]}")
-    
-    # Топ веществ
-    cur.execute("""
-        SELECT s.name_ru, COUNT(*) as cnt
-        FROM active_substances s
-        JOIN drug_substances ds ON s.id = ds.substance_id
-        GROUP BY s.id, s.name_ru
-        ORDER BY cnt DESC
-        LIMIT 10;
-    """)
-    print(f"\n  Топ-10 веществ:")
-    for name, count in cur.fetchall():
-        print(f"    {name}: {count}")
     
     cur.close()
     conn.close()
-    
-    print(f"\n{'='*60}")
-    print("✓ ЗАГРУЗКА ЗАВЕРШЕНА!")
-    print(f"{'='*60}")
 
 if __name__ == "__main__":
     main()

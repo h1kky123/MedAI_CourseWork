@@ -3,55 +3,36 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.so
-.Python
 build/
-develop-eggs/
 dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
 *.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
+.eggs/
 
 # Virtual Environment
 .venv/
 env/
 venv/
-ENV/
-env.bak/
-venv.bak/
 
 # IDEs
 .vscode/
 .idea/
 *.swp
 *.swo
-*~
 
-# Data & Models
-*.json
-!dataset_train.json
-!dataset_val.json
-!dataset_test.json
+# Большие датасеты
 vidal_dataset_*.json
 cleaned_*.json
+finetune_dataset.jsonl
+
+# Модели
 *.pth
 *.bin
 *.safetensors
-qwen_medical_lora/
-drug_intent_classifier.pth
+models/
 
-# Database dumps
+# База данных
 *.sql
 *.db
 
-# Logs
+# Логи
 *.log

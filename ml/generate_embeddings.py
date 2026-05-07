@@ -1,6 +1,3 @@
-"""
-Генерация векторных эмбеддингов для всех препаратов в БД
-"""
 import sys
 import io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
@@ -21,9 +18,7 @@ DB_CONFIG = {
 BATCH_SIZE = 100
 
 def main():
-    print("="*60)
     print("ГЕНЕРАЦИЯ ЭМБЕДДИНГОВ")
-    print("="*60)
     
     # 1. Добавляем колонку embedding
     print("\n1. Подготовка таблицы...")
@@ -40,20 +35,20 @@ def main():
     has_column = cur.fetchone()[0]
     
     if not has_column:
-        print("  Добавление колонки embedding...")
+        print("Добавление колонки embedding...")
         cur.execute("ALTER TABLE drug_content ADD COLUMN embedding FLOAT[];")
         conn.commit()
-        print("  OK Колонка добавлена")
+        print("Колонка добавлена")
     else:
-        print("  Очистка старых эмбеддингов...")
+        print("Очистка старых эмбеддингов...")
         cur.execute("UPDATE drug_content SET embedding = NULL;")
         conn.commit()
-        print("  OK Очищено")
+        print("Очищено")
     
     # 2. Загружаем модель
     print("\n2. Загрузка модели...")
     model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
-    print("  OK Модель загружена")
+    print("Модель загружена")
     
     # 3. Получаем все записи без эмбеддингов
     print("\n3. Получение данных...")
@@ -104,28 +99,25 @@ def main():
                 tqdm.write(f"  Сохранено: {total_processed}/{len(records)}")
         
         except Exception as e:
-            tqdm.write(f"  Ошибка в батче {i}: {e}")
+            tqdm.write(f"Ошибка в батче {i}: {e}")
             continue
     
     conn.commit()
     
     # 5. Статистика
-    print("\n" + "="*60)
     cur.execute("SELECT COUNT(*) FROM drug_content WHERE embedding IS NOT NULL;")
     with_emb = cur.fetchone()[0]
     cur.execute("SELECT COUNT(*) FROM drug_content;")
     total = cur.fetchone()[0]
     
-    print(f"РЕЗУЛЬТАТ:")
+    print(f"\nРЕЗУЛЬТАТ:")
     print(f"  С эмбеддингами: {with_emb}/{total}")
     print(f"  Без эмбеддингов: {total - with_emb}")
     
     cur.close()
     conn.close()
-    
-    print(f"\n{'='*60}")
-    print("  OK Генерация завершена")
-    print(f"{'='*60}")
+
+    print(" Генерация завершена")
 
 if __name__ == "__main__":
     main()

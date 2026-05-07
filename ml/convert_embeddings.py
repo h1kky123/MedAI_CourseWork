@@ -31,8 +31,8 @@ cur.execute("SELECT EXISTS(SELECT 1 FROM pg_indexes WHERE indexname='idx_drug_em
 if not cur.fetchone()[0]:
     cur.execute("CREATE INDEX idx_drug_embedding ON drug_content USING ivfflat(embedding vector_cosine_ops) WITH(lists=100)")
     c.commit()
-    print("  OK индекс создан")
+    print("Индекс создан")
 
 cur.execute("SELECT COUNT(*) FROM drug_content WHERE embedding IS NOT NULL")
-print(f"\nOK Готово: {cur.fetchone()[0]} записей с vector(384)")
+print(f"\nГотово: {cur.fetchone()[0]} записей с vector(384)")
 cur.close(); c.close()

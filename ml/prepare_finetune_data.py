@@ -1,8 +1,3 @@
-"""
-prepare_finetune_data.py
-Генерация датасета для Fine-Tuning Qwen2.5-1.5B
-Формат: JSONL (ChatML / Alpaca style)
-"""
 import json
 import random
 import psycopg2
@@ -20,12 +15,7 @@ DB_CONFIG = {
 def get_db_connection():
     return psycopg2.connect(**DB_CONFIG)
 
-
 def generate_finetune_dataset(output_file="finetune_dataset.jsonl", limit=2000):
-    """
-    Генерирует датасет для обучения LLM.
-    Структура: {"messages": [{"role": "system", ...}, {"role": "user", ...}, {"role": "assistant", ...}]}
-    """
     conn = get_db_connection()
     cur = conn.cursor()
 

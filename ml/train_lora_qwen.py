@@ -1,8 +1,3 @@
-"""
-train_lora_qwen.py
-Обучение Qwen2.5-1.5B-Instruct через LoRA на медицинских данных
-ИСПРАВЛЕННАЯ ВЕРСИЯ (совместимость с новыми transformers + CPU оптимизация)
-"""
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, TrainingArguments, Trainer
 from peft import LoraConfig, get_peft_model
@@ -11,16 +6,15 @@ import os
 
 # Конфигурация
 MODEL_NAME = "Qwen/Qwen2.5-1.5B-Instruct"
-DATASET_PATH = "finetune_dataset.jsonl"
-OUTPUT_DIR = "./qwen_medical_lora"
+DATASET_PATH = "../data/finetune_dataset.jsonl"
+OUTPUT_DIR = "../models/qwen_medical_lora"
 
 # Проверка CUDA
 device = "cuda" if torch.cuda.is_available() else "cpu"
 print(f"Используем устройство: {device}")
 
 if device == "cpu":
-    print("⚠️ ВНИМАНИЕ: Обучение на CPU будет медленным.")
-    # Для CPU используем меньший батч, но больше накопления градиентов
+    print("Обучение на CPU будет медленным.")
     BATCH_SIZE = 1
     GRAD_ACCUMULATION = 8
     EPOCHS = 1 # Начнем с 1 эпохи для проверки, что всё работает
@@ -74,7 +68,7 @@ def main():
 
         tokenized = tokenizer(text, truncation=True, max_length=512, padding="max_length")
 
-        # ВАЖНОЕ ИСПРАВЛЕНИЕ: Создаем колонку labels
+        # Создаем колонку labels
         tokenized["labels"] = tokenized["input_ids"].copy()
 
         return tokenized
@@ -104,20 +98,18 @@ def main():
         lr_scheduler_type="cosine",
         logging_steps=10,
         save_strategy="epoch",
-        eval_strategy="epoch", # <-- ИСПРАВЛЕНО ЗДЕСЬ (было evaluation_strategy)
+        eval_strategy="epoch",
         fp16=device == "cuda",
         bf16=False,
         report_to="none"
     )
 
     # 5. Запуск Trainer
-    # ИСПРАВЛЕНИЕ: Убран аргумент tokenizer из конструктора Trainer
     trainer = Trainer(
         model=model,
         args=training_args,
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
-        # tokenizer=tokenizer, <--- УДАЛЕНО
     )
 
     print("Начало обучения...")
@@ -128,7 +120,7 @@ def main():
     trainer.save_model(OUTPUT_DIR)
     tokenizer.save_pretrained(OUTPUT_DIR)
 
-    print(f"✅ Обучение завершено! Модель сохранена в {OUTPUT_DIR}")
+    print(f"Обучение завершено! Модель сохранена в {OUTPUT_DIR}")
     print("Теперь можно использовать адаптеры в API.")
 
 if __name__ == "__main__":
